@@ -1,12 +1,10 @@
 module "accelerator", package.seeall
 
+
 -- Only cache GET requests
 
 if ngx.var.request_method ~= "GET"
-  return {
-    access: ->
-    body_filter: ->
-  }
+  return { access: -> }
 
 
 -- Dependencies
@@ -31,10 +29,23 @@ memc = ->
   client
 
 
+-- Create coroutine to write cache
+
+writeCache = ->
+  co = coroutine.create ->
+    if res = ngx.location.capture(ngx.var.request_uri)
+      res.time = os.time()
+      memc()\set(ngx.var.request_uri, json.encode(res))
+
+  coroutine.resume(co)
+
+
 -- Execute within access_by_lua:
 -- http://wiki.nginx.org/HttpLuaModule#access_by_lua
 
 export access = ->
+  return if ngx.is_subrequest
+
   cache, flags, err = memc()\get(ngx.var.request_uri)
   return if err
 
@@ -42,41 +53,19 @@ export access = ->
     ngx.log(ngx.ERR, "readCache", cache)
     cache = json.decode(cache)
 
-    -- Serve up cache if ttl  < 10 seconds
-    if os.time() - cache.time < 10
-      ngx.headers = cache.headers
-      ngx.say(cache.body)
-      ngx.exit(ngx.HTTP_OK)
+    if cc = cache.header["Cache-Control"]
+      x, x, ttl = string.find(cc, "max%-age=(%d+)")
 
-  cache
-
-
--- Execute within body_filter_by_lua:
--- http://wiki.nginx.org/HttpLuaModule#body_filter_by_lua
-
-export body_filter = ->
-  return if ngx.ctx.written
-
-  ngx.ctx.body = "" if not ngx.ctx.body
-  ngx.ctx.body ..= ngx.arg[1]
-
-  return if not ngx.arg[2]
-
-  ngx.ctx.written = true
-  
-  json = json.encode({
-    body: ngx.ctx.body
-    headers: ngx.headers
-    time: os.time()
-  })
-
-  ngx.log(ngx.ERR, "writeCache", json)
-  memc()\set(ngx.var.request_uri, json)
+    -- Rewrite cache if ttl expires
+    -- Without a default ttl, you get stuck on a caches without Cache-Control
+    if os.time() - cache.time >= (ttl or 10)
+      writeCache()
+    
+    -- ngx.headers = cache.headers
+    ngx.say(cache.body)
+    ngx.exit(ngx.HTTP_OK)
 
 
 -- Return
 
-return {
-  access: access
-  body_filter: body_filter
-}
+return { access: access }

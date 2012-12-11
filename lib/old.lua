@@ -84,4 +84,24 @@ do
   end
   Accelerator = _class_0
 end
-return Accelerator()
+Accelerator()
+body_filter = function()
+  if ngx.ctx.written then
+    return 
+  end
+  if not ngx.ctx.body then
+    ngx.ctx.body = ""
+  end
+  ngx.ctx.body = ngx.ctx.body .. ngx.arg[1]
+  if not ngx.arg[2] then
+    return 
+  end
+  ngx.ctx.written = true
+  local json = json.encode({
+    body = ngx.ctx.body,
+    headers = ngx.headers,
+    time = os.time()
+  })
+  ngx.log(ngx.ERR, "writeCache", json)
+  return memc():set(ngx.var.request_uri, json)
+end

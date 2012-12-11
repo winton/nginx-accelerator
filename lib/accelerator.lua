@@ -1,8 +1,7 @@
 module("accelerator", package.seeall)
 if ngx.var.request_method ~= "GET" then
   return {
-    access = function() end,
-    body_filter = function() end
+    access = function() end
   }
 end
 local json = require("cjson")
@@ -21,7 +20,23 @@ memc = function()
   end
   return client
 end
+local writeCache
+writeCache = function()
+  local co = coroutine.create(function()
+    do
+      local res = ngx.location.capture(ngx.var.request_uri)
+      if res then
+        res.time = os.time()
+        return memc():set(ngx.var.request_uri, json.encode(res))
+      end
+    end
+  end)
+  return coroutine.resume(co)
+end
 access = function()
+  if ngx.is_subrequest then
+    return 
+  end
   local cache, flags, err = memc():get(ngx.var.request_uri)
   if err then
     return 
@@ -29,35 +44,19 @@ access = function()
   if cache then
     ngx.log(ngx.ERR, "readCache", cache)
     cache = json.decode(cache)
-    if os.time() - cache.time < 10 then
-      ngx.headers = cache.headers
-      ngx.say(cache.body)
-      ngx.exit(ngx.HTTP_OK)
+    do
+      local cc = cache.header["Cache-Control"]
+      if cc then
+        local x, x, ttl = string.find(cc, "max%-age=(%d+)")
+      end
     end
+    if os.time() - cache.time >= (ttl or 10) then
+      writeCache()
+    end
+    ngx.say(cache.body)
+    return ngx.exit(ngx.HTTP_OK)
   end
-  return cache
-end
-body_filter = function()
-  if ngx.ctx.written then
-    return 
-  end
-  if not ngx.ctx.body then
-    ngx.ctx.body = ""
-  end
-  ngx.ctx.body = ngx.ctx.body .. ngx.arg[1]
-  if not ngx.arg[2] then
-    return 
-  end
-  ngx.ctx.written = true
-  json = json.encode({
-    body = ngx.ctx.body,
-    headers = ngx.headers,
-    time = os.time()
-  })
-  ngx.log(ngx.ERR, "writeCache", json)
-  return memc():set(ngx.var.request_uri, json)
 end
 return {
-  access = access,
-  body_filter = body_filter
+  access = access
 }
