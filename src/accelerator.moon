@@ -33,6 +33,8 @@ memc = ->
 
 writeCache = ->
   co = coroutine.create ->
+    ngx.log(ngx.DEBUG, "WRITE CACHE")
+
     if res = ngx.location.capture(ngx.var.request_uri)
       res.time = os.time()
       memc()\set(ngx.var.request_uri, json.encode(res))
@@ -50,11 +52,17 @@ export access = ->
   return if err
 
   if cache
-    ngx.log(ngx.ERR, "readCache", cache)
+    ngx.log(ngx.DEBUG, "READ CACHE " .. cache)
+
     cache = json.decode(cache)
+    ttl   = nil
 
     if cc = cache.header["Cache-Control"]
       x, x, ttl = string.find(cc, "max%-age=(%d+)")
+
+    if ttl
+      ttl = tonumber(ttl)
+      ngx.log(ngx.DEBUG, "TTL ", ttl)
 
     -- Rewrite cache if ttl expires
     -- Without a default ttl, you get stuck on a caches without Cache-Control

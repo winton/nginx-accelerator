@@ -23,6 +23,7 @@ end
 local writeCache
 writeCache = function()
   local co = coroutine.create(function()
+    ngx.log(ngx.DEBUG, "WRITE CACHE")
     do
       local res = ngx.location.capture(ngx.var.request_uri)
       if res then
@@ -42,13 +43,19 @@ access = function()
     return 
   end
   if cache then
-    ngx.log(ngx.ERR, "readCache", cache)
+    ngx.log(ngx.DEBUG, "READ CACHE " .. cache)
     cache = json.decode(cache)
+    local ttl = nil
     do
       local cc = cache.header["Cache-Control"]
       if cc then
-        local x, x, ttl = string.find(cc, "max%-age=(%d+)")
+        local x, x
+        x, x, ttl = string.find(cc, "max%-age=(%d+)")
       end
+    end
+    if ttl then
+      ttl = tonumber(ttl)
+      ngx.log(ngx.DEBUG, "TTL ", ttl)
     end
     if os.time() - cache.time >= (ttl or 10) then
       writeCache()
