@@ -53,6 +53,7 @@ access = function()
     if os.time() - cache.time >= (ttl or 10) then
       writeCache()
     end
+    ngx.header = cache.header
     ngx.say(cache.body)
     return ngx.exit(ngx.HTTP_OK)
   end

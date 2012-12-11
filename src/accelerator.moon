@@ -61,7 +61,7 @@ export access = ->
     if os.time() - cache.time >= (ttl or 10)
       writeCache()
     
-    -- ngx.headers = cache.headers
+    ngx.header = cache.header
     ngx.say(cache.body)
     ngx.exit(ngx.HTTP_OK)
 

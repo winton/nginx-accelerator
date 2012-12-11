@@ -1,0 +1,7 @@
+#!/bin/sh
+
+./build
+luarocks make
+nginx -p `pwd`/ -c nginx.conf -s stop
+nginx -p `pwd`/ -c nginx.conf
+tail -f logs/error.log
