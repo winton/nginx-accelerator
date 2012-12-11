@@ -1,29 +1,82 @@
+module "accelerator", package.seeall
+
+-- Only cache GET requests
+
+if ngx.var.request_method ~= "GET"
+  return {
+    access: ->
+    body_filter: ->
+  }
+
+
+-- Dependencies
+
+json      = require "cjson"
 memcached = require "resty.memcached"
 
-class Accelerator
-  new: =>
-    return if ngx.var.request_method ~= "GET"
 
-    memc, err = memcached\new()
-    return if not memc
+-- Create memcached client
 
-    memc\set_timeout(1000) -- 1 sec
+memc = ->
+  client, err = memcached\new()
+  return if not client
 
-    ok, err = memc\connect("127.0.0.1", 11211)
-    return if not ok
+  -- Set memcached connection timeout to 1 sec
+  client\set_timeout(1000)
 
-    cache, flags, err = memc\get(ngx.var.request_uri)
+  -- Connect to memcached server
+  ok, err = client\connect("127.0.0.1", 11211)
+  return if not ok
 
-    return if err
+  client
 
-    if cache
-      ngx.log(ngx.ERR, "CACHE FOUND")
-      ngx.say(cache)
-    else
-      ngx.log(ngx.ERR, "CACHE NOT FOUND")
-      res = ngx.location.capture("/app" .. ngx.var.request_uri)
-      if res and res.body
-        ngx.say(res.body)
-        memc\set(ngx.var.request_uri, res.body, 10)
 
-Accelerator()
+-- Execute within access_by_lua:
+-- http://wiki.nginx.org/HttpLuaModule#access_by_lua
+
+export access = ->
+  cache, flags, err = memc()\get(ngx.var.request_uri)
+  return if err
+
+  if cache
+    ngx.log(ngx.ERR, "readCache", cache)
+    cache = json.decode(cache)
+
+    -- Serve up cache if ttl  < 10 seconds
+    if os.time() - cache.time < 10
+      ngx.headers = cache.headers
+      ngx.say(cache.body)
+      ngx.exit(ngx.HTTP_OK)
+
+  cache
+
+
+-- Execute within body_filter_by_lua:
+-- http://wiki.nginx.org/HttpLuaModule#body_filter_by_lua
+
+export body_filter = ->
+  return if ngx.ctx.written
+
+  ngx.ctx.body = "" if not ngx.ctx.body
+  ngx.ctx.body ..= ngx.arg[1]
+
+  return if not ngx.arg[2]
+
+  ngx.ctx.written = true
+  
+  json = json.encode({
+    body: ngx.ctx.body
+    headers: ngx.headers
+    time: os.time()
+  })
+
+  ngx.log(ngx.ERR, "writeCache", json)
+  memc()\set(ngx.var.request_uri, json)
+
+
+-- Return
+
+return {
+  access: access
+  body_filter: body_filter
+}
