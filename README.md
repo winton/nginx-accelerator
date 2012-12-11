@@ -1,9 +1,12 @@
 #Nginx Accelerator
 
-Drop nginx-level memcached page caching in front of any route.
+Drop-in page caching using nginx, lua, and memcached.
+
+##Features
 
 * Listens to Cache-Control max-age header
 * The memcached key is the URI (easy to expire on demand)
+* Really, really fast
 
 ##Requirements
 
@@ -21,11 +24,11 @@ See the [Building OpenResty](#building-openresty) section below for instructions
 
 ##Usage
 
-Drop the following line in any `location` directive:
+Drop the following line in any `location` directive within `nginx.conf`:
 
     access_by_lua "require('accelerator').access()";
 
-For example, an `nginx.conf` to cache your front page:
+For example:
 
     http {
       server {
