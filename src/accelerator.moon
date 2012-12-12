@@ -15,7 +15,7 @@ memcached = require "resty.memcached"
 
 -- Create memcached client
 
-memc = ->
+memc = (opts={}) ->
   client, err = memcached\new()
   return if not client
 
@@ -23,7 +23,7 @@ memc = ->
   client\set_timeout(1000)
 
   -- Connect to memcached server
-  ok, err = client\connect("127.0.0.1", 11211)
+  ok, err = client\connect((opts.host or "127.0.0.1"), (opts.port or 11211))
   return if not ok
 
   client
@@ -31,13 +31,13 @@ memc = ->
 
 -- Create coroutine to write cache
 
-writeCache = ->
+writeCache = (opts) ->
   co = coroutine.create ->
     ngx.log(ngx.DEBUG, "WRITE CACHE")
 
     if res = ngx.location.capture(ngx.var.request_uri)
       res.time = os.time()
-      memc()\set(ngx.var.request_uri, json.encode(res))
+      memc(opts)\set(ngx.var.request_uri, json.encode(res))
 
   coroutine.resume(co)
 
@@ -45,10 +45,10 @@ writeCache = ->
 -- Execute within access_by_lua:
 -- http://wiki.nginx.org/HttpLuaModule#access_by_lua
 
-export access = ->
+export access = (opts) ->
   return if ngx.is_subrequest
 
-  cache, flags, err = memc()\get(ngx.var.request_uri)
+  cache, flags, err = memc(opts)\get(ngx.var.request_uri)
   return if err
 
   if cache
@@ -67,11 +67,14 @@ export access = ->
     -- Rewrite cache if ttl expires
     -- Without a default ttl, you get stuck on a caches without Cache-Control
     if os.time() - cache.time >= (ttl or 10)
-      writeCache()
+      writeCache(opts)
     
     ngx.header = cache.header
     ngx.say(cache.body)
-    ngx.exit(ngx.HTTP_OK)
+
+    return ngx.exit(ngx.HTTP_OK)
+  
+  writeCache(opts)
 
 
 -- Return

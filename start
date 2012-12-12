@@ -2,6 +2,8 @@
 
 ./build
 luarocks make
+PATH=/usr/local/openresty/nginx/sbin:$PATH
+export PATH
 nginx -p `pwd`/ -c nginx.conf -s stop
 nginx -p `pwd`/ -c nginx.conf
 tail -f logs/error.log

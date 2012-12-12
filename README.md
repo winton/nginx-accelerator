@@ -42,6 +42,10 @@ For example:
 
 The TTL is based on `Cache-Control: max-age`, but defaults to 10 seconds.
 
+To configure your memcached connection information:
+
+	access_by_lua "require('accelerator').access({ host='127.0.0.1', port=11211 })";
+
 ## Building OpenResty
 
 Instructions for building [OpenResty](http://openresty.org) on OS X with [Homebrew](http://mxcl.github.com/homebrew):
