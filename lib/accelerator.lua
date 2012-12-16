@@ -57,25 +57,24 @@ access = function(opts)
         cache = cache or { }
         cache.time = os.time()
         memc:set(ngx.var.request_uri, json.encode(cache))
+        local res = ngx.location.capture(ngx.var.request_uri)
+        if not res then
+          return 
+        end
         do
-          local res = ngx.location.capture(ngx.var.request_uri)
-          if res then
-            do
-              local cc = res.header["Cache-Control"]
-              if cc then
-                local x, x, ttl = string.find(cc, "max%-age=(%d+)")
-              end
-            end
-            if ttl then
-              local ttl = tonumber(ttl)
-              debug("ttl", ttl)
-            end
-            res.time = os.time()
-            res.ttl = ttl
-            memc:set(ngx.var.request_uri, json.encode(res))
-            return debug("write cache")
+          local cc = res.header["Cache-Control"]
+          if cc then
+            local x, x, ttl = string.find(cc, "max%-age=(%d+)")
           end
         end
+        if ttl then
+          local ttl = tonumber(ttl)
+          debug("ttl", ttl)
+        end
+        res.time = os.time()
+        res.ttl = ttl
+        memc:set(ngx.var.request_uri, json.encode(res))
+        return debug("write cache")
       end)
       coroutine.resume(co)
     end

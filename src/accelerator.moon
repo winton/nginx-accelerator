@@ -39,7 +39,7 @@ access = (opts) ->
 
   fn = ->
     memc = memclient(opts)
-    
+
     cache, flags, err = memc\get(ngx.var.request_uri)
     error(err) if err
 
@@ -63,22 +63,23 @@ access = (opts) ->
         memc\set(ngx.var.request_uri, json.encode(cache))
 
         -- Make subrequest
-        if res = ngx.location.capture(ngx.var.request_uri)
+        res = ngx.location.capture(ngx.var.request_uri)
+        return if not res
 
-          -- Parse TTL
-          if cc = res.header["Cache-Control"]
-            x, x, ttl = string.find(cc, "max%-age=(%d+)")
+        -- Parse TTL
+        if cc = res.header["Cache-Control"]
+          x, x, ttl = string.find(cc, "max%-age=(%d+)")
 
-          if ttl
-            ttl = tonumber(ttl)
-            debug("ttl", ttl)
+        if ttl
+          ttl = tonumber(ttl)
+          debug("ttl", ttl)
 
-          res.time = os.time()
-          res.ttl  = ttl
+        res.time = os.time()
+        res.ttl  = ttl
 
-          -- Write cache
-          memc\set(ngx.var.request_uri, json.encode(res))
-          debug("write cache")
+        -- Write cache
+        memc\set(ngx.var.request_uri, json.encode(res))
+        debug("write cache")
 
       coroutine.resume(co)
 

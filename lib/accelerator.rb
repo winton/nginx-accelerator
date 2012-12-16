@@ -1,38 +1,49 @@
+require 'rubygems'
+require 'cgi'
 require 'json'
-
-$:.unshift File.dirname(__FILE__)
+require 'memcached'
 
 class Accelerator
 
-  def initialize(host_and_port)
-    @memc = Memcached.new(host_and_port)
+  def initialize(host="localhost:11211")
+    @memc = Memcached.new(host)
   end
 
   def expire(uri)
-    data = get_and_set_time(uri)
-    @memc.set(uri, data.to_json)
+    if data = get_and_set_time(uri)
+      @memc.set(key(uri), data.to_json, 604800, false)
+    end
   end
 
   def get(uri)
-    data = get_and_parse(uri)
-    [ data.delete(:body), data ]
+    if data = get_and_parse(uri)
+      [ data.delete(:body), data ]
+    end
   end
 
   def set(uri, body)
-    data = get_and_set_time(uri)
+    data = get_and_set_time(uri) || { :time => Time.now.to_i }
     data[:body] = body
-    @memc.set(uri, data.to_json)
+    @memc.set(key(uri), data.to_json, 604800, false)
   end
 
   private
 
+  def key(k)
+    CGI.escape(k).gsub(/%../) { |s| s.downcase }
+  end
+
   def get_and_parse(uri)
-    JSON.parse(@memc.get(uri), :symbolize_names => true)
+    data = @memc.get(key(uri), nil) rescue nil
+    if data
+      JSON.parse(data, :symbolize_names => true)
+    end
   end
 
   def get_and_set_time(uri)
-    data = get_and_parse(uri)
-    data[:time] = Time.now.to_i
+    if data = get_and_parse(uri)
+      data[:time] = Time.now.to_i
+    end
     data
   end
 end
