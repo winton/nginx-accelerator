@@ -10,13 +10,13 @@ memcached = require "resty.memcached"
 -- Debug log
 
 debug = (kind, msg) ->
-  msg = if msg then ": " .. msg else ""
-  ngx.log(ngx.DEBUG, kind .. msg)
+  msg = if msg then kind .. ": " .. msg else kind
+  ngx.log(ngx.DEBUG, msg)
 
 
 -- Create memcached client
 
-memc = (opts={}) ->
+memclient = (opts={}) ->
   client, err = memcached\new()
   error(err or "problem creating client") if not client or err
 
@@ -30,19 +30,6 @@ memc = (opts={}) ->
   client
 
 
--- Create coroutine to write cache
-
-writeCache = (opts) ->
-  co = coroutine.create ->
-    debug("write cache")
-
-    if res = ngx.location.capture(ngx.var.request_uri)
-      res.time = os.time()
-      memc(opts)\set(ngx.var.request_uri, json.encode(res))
-
-  coroutine.resume(co)
-
-
 -- Execute within access_by_lua:
 -- http://wiki.nginx.org/HttpLuaModule#access_by_lua
 
@@ -51,33 +38,53 @@ access = (opts) ->
   return if ngx.is_subrequest
 
   fn = ->
-    cache, flags, err = memc(opts)\get(ngx.var.request_uri)
+    memc = memclient(opts)
+    
+    cache, flags, err = memc\get(ngx.var.request_uri)
     error(err) if err
 
     if cache
       debug("read cache", cache)
-
       cache = json.decode(cache)
-      ttl   = nil
-
-      if cc = cache.header["Cache-Control"]
-        x, x, ttl = string.find(cc, "max%-age=(%d+)")
-
-      if ttl
-        ttl = tonumber(ttl)
-        debug("ttl", ttl)
-
-      -- Rewrite cache if ttl expires
-      -- Without a default ttl, you get stuck on a caches without Cache-Control
-      if os.time() - cache.time >= (ttl or 10)
-        writeCache(opts)
       
-      ngx.header = cache.header
-      ngx.say(cache.body)
+      if cache.header
+        ngx.header = cache.header
 
-      return ngx.exit(ngx.HTTP_OK)
+      if cache.body
+        ngx.say(cache.body)
     
-    writeCache(opts)
+    -- Rewrite cache if cache does not exist or ttl has expired
+    if not cache or os.time() - cache.time >= (cache.ttl or 10)
+      co = coroutine.create ->
+
+        -- Immediately update the time to prevent multiple writes
+        cache = cache or {}
+        cache.time = os.time()
+        memc\set(ngx.var.request_uri, json.encode(cache))
+
+        -- Make subrequest
+        if res = ngx.location.capture(ngx.var.request_uri)
+
+          -- Parse TTL
+          if cc = res.header["Cache-Control"]
+            x, x, ttl = string.find(cc, "max%-age=(%d+)")
+
+          if ttl
+            ttl = tonumber(ttl)
+            debug("ttl", ttl)
+
+          res.time = os.time()
+          res.ttl  = ttl
+
+          -- Write cache
+          memc\set(ngx.var.request_uri, json.encode(res))
+          debug("write cache")
+
+      coroutine.resume(co)
+
+    -- Prevent further phases from executing if body rendered
+    if cache and cache.body
+      ngx.exit(ngx.HTTP_OK)
 
   status, err = pcall(fn)
   ngx.log(ngx.ERR, err) if err

@@ -4,14 +4,14 @@ local memcached = require("resty.memcached")
 local debug
 debug = function(kind, msg)
   if msg then
-    msg = ": " .. msg
+    msg = kind .. ": " .. msg
   else
-    msg = ""
+    msg = kind
   end
-  return ngx.log(ngx.DEBUG, kind .. msg)
+  return ngx.log(ngx.DEBUG, msg)
 end
-local memc
-memc = function(opts)
+local memclient
+memclient = function(opts)
   if opts == nil then
     opts = { }
   end
@@ -27,20 +27,6 @@ memc = function(opts)
   end
   return client
 end
-local writeCache
-writeCache = function(opts)
-  local co = coroutine.create(function()
-    debug("write cache")
-    do
-      local res = ngx.location.capture(ngx.var.request_uri)
-      if res then
-        res.time = os.time()
-        return memc(opts):set(ngx.var.request_uri, json.encode(res))
-      end
-    end
-  end)
-  return coroutine.resume(co)
-end
 local access
 access = function(opts)
   if ngx.var.request_method ~= "GET" then
@@ -51,33 +37,51 @@ access = function(opts)
   end
   local fn
   fn = function()
-    local cache, flags, err = memc(opts):get(ngx.var.request_uri)
+    local memc = memclient(opts)
+    local cache, flags, err = memc:get(ngx.var.request_uri)
     if err then
       error(err)
     end
     if cache then
       debug("read cache", cache)
       cache = json.decode(cache)
-      local ttl = nil
-      do
-        local cc = cache.header["Cache-Control"]
-        if cc then
-          local x, x
-          x, x, ttl = string.find(cc, "max%-age=(%d+)")
+      if cache.header then
+        ngx.header = cache.header
+      end
+      if cache.body then
+        ngx.say(cache.body)
+      end
+    end
+    if not cache or os.time() - cache.time >= (cache.ttl or 10) then
+      local co = coroutine.create(function()
+        cache = cache or { }
+        cache.time = os.time()
+        memc:set(ngx.var.request_uri, json.encode(cache))
+        do
+          local res = ngx.location.capture(ngx.var.request_uri)
+          if res then
+            do
+              local cc = res.header["Cache-Control"]
+              if cc then
+                local x, x, ttl = string.find(cc, "max%-age=(%d+)")
+              end
+            end
+            if ttl then
+              local ttl = tonumber(ttl)
+              debug("ttl", ttl)
+            end
+            res.time = os.time()
+            res.ttl = ttl
+            memc:set(ngx.var.request_uri, json.encode(res))
+            return debug("write cache")
+          end
         end
-      end
-      if ttl then
-        ttl = tonumber(ttl)
-        debug("ttl", ttl)
-      end
-      if os.time() - cache.time >= (ttl or 10) then
-        writeCache(opts)
-      end
-      ngx.header = cache.header
-      ngx.say(cache.body)
+      end)
+      coroutine.resume(co)
+    end
+    if cache and cache.body then
       return ngx.exit(ngx.HTTP_OK)
     end
-    return writeCache(opts)
   end
   local status, err = pcall(fn)
   if err then
