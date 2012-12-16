@@ -1,2 +1,8 @@
-nginx/*_temp
+.DS_Store
+*.gem
+.bundle
+Gemfile.lock
 logs
+nginx/*_temp
+pkg
+tmp
