@@ -46,16 +46,19 @@ To configure your memcached connection information:
 
 	access_by_lua "require('accelerator').access({ host='127.0.0.1', port=11211 })";
 
-## Building OpenResty
+## Building Demo Project
 
-Instructions for building [OpenResty](http://openresty.org) on OS X with [Homebrew](http://mxcl.github.com/homebrew):
+###Install Lua
+
+	brew install lua
+	brew install luarocks
 
 ###Install PCRE
 
 	brew update
 	brew install pcre
 
-###Install nginx
+###Install [OpenResty](http://openresty.org) (nginx)
 
 	curl -O http://agentzh.org/misc/nginx/ngx_openresty-1.2.4.9.tar.gz
 	tar xzvf ngx_openresty-1.2.4.9.tar.gz
@@ -73,6 +76,5 @@ Replace **VERSION** below with the PCRE version:
 
 ###Start nginx
 
-	PATH=/usr/local/openresty/nginx/sbin:$PATH
-	export PATH
-	nginx -p `pwd`/ -c conf/nginx.conf
+	cd nginx-accelerator
+	./nginx/start
