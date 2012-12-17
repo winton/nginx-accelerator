@@ -36,12 +36,6 @@ describe Accelerator do
     response_tests(Time.new.to_i)
   end
 
-  it "should obey client expiration" do
-    @accelerator.expire("/test")
-    request.should == $last_time
-    response_tests($last_time)
-  end
-
   it "should set cache body from the client" do
     @accelerator.set("/test", "123")
     $expires_at = Time.now.to_f.ceil
@@ -60,6 +54,13 @@ describe Accelerator do
       expires_in = $expires_at - Time.now.to_f
       request(expires_in).should == 123
     end
+    response_tests(Time.new.to_i)
+  end
+
+  it "should obey client expiration" do
+    @accelerator.set("/test", "123")
+    @accelerator.expire("/test")
+    request.should == 123
     response_tests(Time.new.to_i)
   end
 end

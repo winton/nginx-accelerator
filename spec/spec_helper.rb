@@ -25,4 +25,5 @@ def response_tests(time)
     },
     :time => time
   }
+  request.should == time
 end
