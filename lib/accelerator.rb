@@ -9,8 +9,13 @@ class Accelerator
     @memc = Memcached.new(host)
   end
 
+  def delete(uri)
+    @memc.delete(key(uri))
+  end
+
   def expire(uri)
     if data = get_and_set_time(uri)
+      data[:time] -= data[:ttl] || 10
       @memc.set(key(uri), data.to_json, 604800, false)
     end
   end

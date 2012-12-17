@@ -52,7 +52,7 @@ access = function(opts)
         ngx.say(cache.body)
       end
     end
-    if not cache or os.time() - cache.time >= (cache.ttl or 10) then
+    if not cache or os.time() - cache.time >= cache.ttl then
       local co = coroutine.create(function()
         cache = cache or { }
         cache.time = os.time()
@@ -61,18 +61,20 @@ access = function(opts)
         if not res then
           return 
         end
+        local ttl = nil
         do
           local cc = res.header["Cache-Control"]
           if cc then
-            local x, x, ttl = string.find(cc, "max%-age=(%d+)")
+            local x, x
+            x, x, ttl = string.find(cc, "max%-age=(%d+)")
           end
         end
         if ttl then
-          local ttl = tonumber(ttl)
+          ttl = tonumber(ttl)
           debug("ttl", ttl)
         end
         res.time = os.time()
-        res.ttl = ttl
+        res.ttl = ttl or opts.ttl or 10
         memc:set(ngx.var.request_uri, json.encode(res))
         return debug("write cache")
       end)

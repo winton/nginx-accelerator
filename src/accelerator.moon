@@ -54,7 +54,7 @@ access = (opts) ->
         ngx.say(cache.body)
     
     -- Rewrite cache if cache does not exist or ttl has expired
-    if not cache or os.time() - cache.time >= (cache.ttl or 10)
+    if not cache or os.time() - cache.time >= cache.ttl
       co = coroutine.create ->
 
         -- Immediately update the time to prevent multiple writes
@@ -67,6 +67,8 @@ access = (opts) ->
         return if not res
 
         -- Parse TTL
+        ttl = nil
+        
         if cc = res.header["Cache-Control"]
           x, x, ttl = string.find(cc, "max%-age=(%d+)")
 
@@ -75,7 +77,7 @@ access = (opts) ->
           debug("ttl", ttl)
 
         res.time = os.time()
-        res.ttl  = ttl
+        res.ttl  = ttl or opts.ttl or 10
 
         -- Write cache
         memc\set(ngx.var.request_uri, json.encode(res))
