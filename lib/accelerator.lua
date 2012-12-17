@@ -65,6 +65,7 @@ access = function(opts)
         do
           local cc = res.header["Cache-Control"]
           if cc then
+            res.header["Cache-Control"] = nil
             local x, x
             x, x, ttl = string.find(cc, "max%-age=(%d+)")
           end

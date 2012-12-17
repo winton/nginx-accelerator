@@ -68,8 +68,9 @@ access = (opts) ->
 
         -- Parse TTL
         ttl = nil
-        
+
         if cc = res.header["Cache-Control"]
+          res.header["Cache-Control"] = nil
           x, x, ttl = string.find(cc, "max%-age=(%d+)")
 
         if ttl

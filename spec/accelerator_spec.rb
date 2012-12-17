@@ -15,8 +15,8 @@ describe Accelerator do
     options.should == {
       :ttl => 5,
       :status => 200,
-      :header => {
-        :"Cache-Control" => "max-age=5",
+      :header => { 
+        :"Content-Length" => 11,
         :"Content-Type" => "text/plain"
       },
       :time => time
