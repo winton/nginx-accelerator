@@ -10,21 +10,23 @@ Drop-in page caching using nginx, lua, and memcached.
 
 ##Requirements
 
-Nginx build with the following modules:
+You'll need an nginx build with the following modules:
 
 * [LuaJIT](http://wiki.nginx.org/HttpLuaModule)
 * [MemcNginxModule](http://wiki.nginx.org/HttpMemcModule)
 * [LuaRestyMemcachedLibrary](https://github.com/agentzh/lua-resty-memcached)
 
-See the [Building OpenResty](#building-openresty) section below for instructions.
+##Configure nginx
 
-##Install
+###Install luarock
 
-    luarocks install nginx-accelerator
+	git clone git://github.com/winton/nginx-accelerator.git
+	cd nginx-accelerator
+	luarocks make
 
-##Nginx config
+###nginx.conf
 
-Drop the following line in any `location` directive within `nginx.conf`:
+Drop the following line in any `location` directive:
 
     access_by_lua "require('accelerator').access()";
 
@@ -57,7 +59,7 @@ To configure your memcached connection information:
 	cache = Accelerator.new("localhost:11211")
 	cache.get("/test")
 	cache.set("/test", "body")
-	cache.delete("/test")
+	cache.delete("/test")	
 	cache.expire("/test", 10)
 
 ## Running specs

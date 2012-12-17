@@ -1,4 +1,4 @@
-package = "nginx-accelerator"
+package = "accelerator"
 version = "1.0-1"
 source = {
    url = "http://github.com/winton/nginx-accelerator"
