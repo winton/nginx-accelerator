@@ -40,7 +40,7 @@ access = (opts) ->
   fn = ->
     memc = memclient(opts)
 
-    cache, flags, err = memc\get(ngx.var.request_uri)
+    cache, flags, err = memc\get(ngx.var.uri)
     error(err) if err
 
     if cache
@@ -60,10 +60,10 @@ access = (opts) ->
         -- Immediately update the time to prevent multiple writes
         cache = cache or {}
         cache.time = os.time()
-        memc\set(ngx.var.request_uri, json.encode(cache))
+        memc\set(ngx.var.uri, json.encode(cache))
 
         -- Make subrequest
-        res = ngx.location.capture(ngx.var.request_uri)
+        res = ngx.location.capture(ngx.var.uri)
         return if not res
 
         -- Parse TTL
@@ -81,7 +81,7 @@ access = (opts) ->
         res.ttl  = ttl or opts.ttl or 10
 
         -- Write cache
-        memc\set(ngx.var.request_uri, json.encode(res))
+        memc\set(ngx.var.uri, json.encode(res))
         debug("write cache")
 
       coroutine.resume(co)

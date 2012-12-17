@@ -15,8 +15,8 @@ class Accelerator
 
   def expire(uri, ttl=nil)
     if data = get_and_set_time(uri)
-      data[:ttl] = ttl if ttl
-      data[:time] -= data[:ttl] || 10
+      data[:ttl]   = ttl if ttl
+      data[:time] -= data[:ttl]
       @memc.set(key(uri), data.to_json, 604800, false)
     end
   end
@@ -27,8 +27,9 @@ class Accelerator
     end
   end
 
-  def set(uri, body)
-    data = get_and_set_time(uri) || { :time => Time.now.to_i }
+  def set(uri, body, ttl=nil)
+    data   = get_and_set_time(uri)
+    data ||= { :time => Time.now.to_i, :ttl => ttl || 10 }
     data[:body] = body
     @memc.set(key(uri), data.to_json, 604800, false)
   end

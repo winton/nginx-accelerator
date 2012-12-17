@@ -38,7 +38,7 @@ access = function(opts)
   local fn
   fn = function()
     local memc = memclient(opts)
-    local cache, flags, err = memc:get(ngx.var.request_uri)
+    local cache, flags, err = memc:get(ngx.var.uri)
     if err then
       error(err)
     end
@@ -56,8 +56,8 @@ access = function(opts)
       local co = coroutine.create(function()
         cache = cache or { }
         cache.time = os.time()
-        memc:set(ngx.var.request_uri, json.encode(cache))
-        local res = ngx.location.capture(ngx.var.request_uri)
+        memc:set(ngx.var.uri, json.encode(cache))
+        local res = ngx.location.capture(ngx.var.uri)
         if not res then
           return 
         end
@@ -76,7 +76,7 @@ access = function(opts)
         end
         res.time = os.time()
         res.ttl = ttl or opts.ttl or 10
-        memc:set(ngx.var.request_uri, json.encode(res))
+        memc:set(ngx.var.uri, json.encode(res))
         return debug("write cache")
       end)
       coroutine.resume(co)
