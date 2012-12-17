@@ -13,8 +13,9 @@ class Accelerator
     @memc.delete(key(uri))
   end
 
-  def expire(uri)
+  def expire(uri, ttl=nil)
     if data = get_and_set_time(uri)
+      data[:ttl] = ttl if ttl
       data[:time] -= data[:ttl] || 10
       @memc.set(key(uri), data.to_json, 604800, false)
     end

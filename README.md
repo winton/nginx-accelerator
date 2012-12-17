@@ -22,7 +22,7 @@ See the [Building OpenResty](#building-openresty) section below for instructions
 
     luarocks install nginx-accelerator
 
-##Usage
+##Nginx config
 
 Drop the following line in any `location` directive within `nginx.conf`:
 
@@ -46,7 +46,21 @@ To configure your memcached connection information:
 
 	access_by_lua "require('accelerator').access({ host='127.0.0.1', port=11211 })";
 
-## Building Demo Project
+## Ruby client
+
+### Install gem
+
+	gem install accelerator
+
+### Example
+
+	cache = Accelerator.new("localhost:11211")
+	cache.get("/test")
+	cache.set("/test", "body")
+	cache.delete("/test")
+	cache.expire("/test", 10)
+
+## Running specs
 
 ###Install Lua
 
@@ -78,3 +92,8 @@ Replace **VERSION** below with the PCRE version:
 
 	cd nginx-accelerator
 	./nginx/start
+
+### Run specs
+
+	bundle install
+	spec spec
