@@ -4,7 +4,7 @@ describe Accelerator do
 
   before(:all) do
     @accelerator = Accelerator.new
-    @accelerator.delete("/test")
+    @accelerator.delete("/test") rescue nil
   end
 
   it "should create cache on first request" do
