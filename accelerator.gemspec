@@ -20,5 +20,5 @@ Gem::Specification.new do |s|
   s.test_files = `cd #{root} && git ls-files -- {features,test,spec}/*`.split("\n")
 
   s.add_dependency "memcached", "~> 1.5.0"
-  s.add_development_dependency "rspec", "~> 1.0"
+  s.add_development_dependency "rspec", "~> 2.0"
 end

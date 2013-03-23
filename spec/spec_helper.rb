@@ -1,29 +1,12 @@
-require "pp"
-require "bundler"
+ENV['ENV'] = 'test'
 
-Bundler.require(:development)
+require "bundler"
+Bundler.require(:default, :development)
 
 $root = File.expand_path('../../', __FILE__)
-
 require "#{$root}/lib/accelerator"
 
-def request(wait=nil)
-  sleep(wait) if wait
-  `curl -s http://localhost:8080/test#{"?blah" if Random.rand(2) == 0}`.strip.to_i
-end
+Dir["#{$root}/spec/support/**/*.rb"].each { |f| require f }
 
-def response_tests(time)
-  $last_time = time
-  body, options = @accelerator.get("/test")
-  body.strip.should == time.to_s
-  options.should == {
-    :ttl => 1,
-    :status => 200,
-    :header => { 
-      :"Content-Length" => 11,
-      :"Content-Type" => "text/plain"
-    },
-    :time => time
-  }
-  request.should == time
+RSpec.configure do |config|
 end
