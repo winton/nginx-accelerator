@@ -76,9 +76,9 @@ To configure your memcached connection information:
 
 ###Install [OpenResty](http://openresty.org) (nginx)
 
-	curl -O http://agentzh.org/misc/nginx/ngx_openresty-1.2.4.9.tar.gz
-	tar xzvf ngx_openresty-1.2.4.9.tar.gz
-	cd ngx_openresty-1.2.4.9/
+	curl -O http://openresty.org/download/ngx_openresty-1.2.6.6.tar.gz
+	tar xzvf ngx_openresty-1.2.6.6.tar.gz
+	cd ngx_openresty-1.2.6.6/
 
 Get your PCRE version:
 
@@ -86,7 +86,7 @@ Get your PCRE version:
 
 Replace **VERSION** below with the PCRE version:
 
-	./configure --with-luajit --with-cc-opt="-I/usr/local/Cellar/pcre/VERSION/include" --with-ld-opt="-L/usr/local/Cellar/pcre/VERSION/lib"
+	./configure --with-luajit --with-cc-opt="-I/usr/local/Cellar/pcre/VERSION/include" --with-ld-opt="-L/usr/local/Cellar/pcre/VERSION/lib" --prefix=~/OpenResty
 	make
 	make install
 
