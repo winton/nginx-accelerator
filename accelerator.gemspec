@@ -21,4 +21,7 @@ Gem::Specification.new do |s|
 
   s.add_dependency "memcached", "~> 1.5.0"
   s.add_development_dependency "rspec", "~> 2.0"
+  s.add_development_dependency "guard"
+  s.add_development_dependency "guard-rspec"
+  s.add_development_dependency "rb-fsevent"
 end
