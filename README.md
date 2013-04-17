@@ -62,7 +62,7 @@ To configure your memcached connection information:
 
   brew install lua
   brew install luarocks
-  luarocks build http://moonscript.org/rocks/moonscript-0.2.0-1.rockspec
+  luarocks build http://moonscript.org/rocks/moonscript-0.2.3-2.rockspec
 
 Add moonscript to your path: 
 
