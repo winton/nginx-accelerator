@@ -1,6 +1,6 @@
 def request(wait=nil)
   sleep(wait) if wait
-  `curl -s http://localhost:8080/test#{"?blah" if Random.rand(2) == 0}`.strip.to_i
+  `curl -s http://localhost:8080/test`.strip.to_i
 end
 
 def response_tests(time)

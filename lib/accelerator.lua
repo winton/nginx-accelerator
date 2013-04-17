@@ -38,7 +38,11 @@ access = function(opts)
   local fn
   fn = function()
     local memc = memclient(opts)
-    local cache, flags, err = memc:get(ngx.var.uri)
+    local key = ngx.var.uri
+    if ngx.var.args then
+      key = key .. ('?' .. ngx.var.args)
+    end
+    local cache, flags, err = memc:get(key)
     if err then
       error(err)
     end
@@ -56,8 +60,8 @@ access = function(opts)
       local co = coroutine.create(function()
         cache = cache or { }
         cache.time = os.time()
-        memc:set(ngx.var.uri, json.encode(cache))
-        local res = ngx.location.capture(ngx.var.uri)
+        memc:set(key, json.encode(cache))
+        local res = ngx.location.capture(key)
         if not res then
           return 
         end
@@ -66,7 +70,7 @@ access = function(opts)
           local cc = res.header["Cache-Control"]
           if cc then
             res.header["Cache-Control"] = nil
-            local x, x
+            local x
             x, x, ttl = string.find(cc, "max%-age=(%d+)")
           end
         end
@@ -76,7 +80,7 @@ access = function(opts)
         end
         res.time = os.time()
         res.ttl = ttl or opts.ttl or 10
-        memc:set(ngx.var.uri, json.encode(res))
+        memc:set(key, json.encode(res))
         return debug("write cache")
       end)
       coroutine.resume(co)
