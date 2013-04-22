@@ -50,28 +50,36 @@ access = (opts) ->
       debug("read cache", cache)
       cache = json.decode(cache)
       
+      ngx.header['X-Server'] = 'nginx-accelerator'
       if cache.header
-        ngx.header = cache.header
+        for k,v in pairs cache.header
+          ngx.header[k] = v
+
+      expired = os.time() - cache.time >= cache.ttl
+      ngx.header['X-Cache'] = 'HIT'
+      if expired
+        ngx.header['X-Cache-State'] = 'EXPIRED'
+      else
+        ngx.header['X-Cache-State'] = cache.ttl - (os.time() - cache.time)
 
       if cache.body
-        ngx.say(cache.body)
-    
+        ngx.say(cache.body) -- render body
+
     -- Rewrite cache if cache does not exist or ttl has expired
     if not cache or os.time() - cache.time >= cache.ttl
       co = coroutine.create ->
 
-        -- Immediately update the time to prevent multiple writes
+        -- Immediately update the time to prevent multiple writes race condition
         cache = cache or {}
         cache.time = os.time()
         memc\set(key, json.encode(cache))
 
-        -- Make subrequest
+        -- Make subrequest to the proxy server
         res = ngx.location.capture(key)
         return if not res
 
         -- Parse TTL
         ttl = nil
-
         if cc = res.header["Cache-Control"]
           res.header["Cache-Control"] = nil
           x, x, ttl = string.find(cc, "max%-age=(%d+)")
@@ -83,7 +91,7 @@ access = (opts) ->
         res.time = os.time()
         res.ttl  = ttl or opts.ttl or 10
 
-        -- Write cache
+        -- Write through cache, never set a ttl
         memc\set(key, json.encode(res))
         debug("write cache")
 
