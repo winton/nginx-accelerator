@@ -49,8 +49,18 @@ access = function(opts)
     if cache then
       debug("read cache", cache)
       cache = json.decode(cache)
+      ngx.header['X-Server'] = 'nginx-accelerator'
       if cache.header then
-        ngx.header = cache.header
+        for k, v in pairs(cache.header) do
+          ngx.header[k] = v
+        end
+      end
+      local expired = os.time() - cache.time >= cache.ttl
+      ngx.header['X-Cache'] = 'HIT'
+      if expired then
+        ngx.header['X-Cache-State'] = 'EXPIRED'
+      else
+        ngx.header['X-Cache-State'] = cache.ttl - (os.time() - cache.time)
       end
       if cache.body then
         ngx.say(cache.body)
